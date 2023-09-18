@@ -9,6 +9,7 @@ User.init(
     email: { type: Sequelize.DataTypes.STRING(255), allowNull: false },
     mobile: { type: Sequelize.DataTypes.STRING(255), allowNull: false },
     password: { type: Sequelize.DataTypes.STRING(255), allowNull: false },
+    loginStatus: { type: Sequelize.DataTypes.BOOLEAN, allowNull: false },
   },
   { sequelize, modelName: "user" }
 );

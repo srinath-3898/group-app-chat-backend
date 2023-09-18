@@ -20,8 +20,8 @@ const signup = async (req, res) => {
         message: "Passwords didn't matched",
       });
     }
-    const user_exists = await User.findOne({ where: { email } });
-    if (user_exists) {
+    const userExists = await User.findOne({ where: { email } });
+    if (userExists) {
       return res.status(409).json({
         status: false,
         data: null,
@@ -30,11 +30,12 @@ const signup = async (req, res) => {
     }
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    const user = User.create({
+    const user = await User.create({
       fullName,
       email,
       mobile,
       password: hashedPassword,
+      loginStatus: false,
     });
     if (!user) {
       await transaction.rollback();
@@ -81,6 +82,12 @@ const signin = async (req, res) => {
       return res
         .status(403)
         .json({ status: false, data: null, message: "Invalid credentials" });
+    }
+    const updateLoginStatus = await user.update({ loginStatus: true });
+    if (!updateLoginStatus) {
+      throw new Error(
+        "Something went wrong while logging in, please try again"
+      );
     }
     const token = generateToken(user);
     return res.status(201).json({
