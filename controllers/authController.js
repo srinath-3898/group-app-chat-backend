@@ -103,4 +103,24 @@ const signin = async (req, res) => {
   }
 };
 
-module.exports = { signup, signin };
+const signout = async (req, res) => {
+  try {
+    const user = req.user;
+    const updatedUser = await user.update({ loginStatus: false });
+    if (!updatedUser) {
+      throw new Error(
+        "Something went wrong while logging out, please try again"
+      );
+    }
+    return res
+      .status(200)
+      .json({ status: true, data: null, message: "Logged out successfully" });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ status: false, data: null, message: error.message });
+  }
+};
+
+module.exports = { signup, signin, signout };
