@@ -1,19 +1,31 @@
+const Chat = require("../models/chatModel");
 const Message = require("../models/messageModel");
 
-const getAllMessages = async (req, res) => {
+const getChatMessages = async (req, res) => {
   try {
+    const { chatId } = req.params;
+    if (!chatId) {
+      return res
+        .status(400)
+        .json({ status: false, data: null, messgae: "Chat id is required" });
+    }
+    const chat = await Chat.findByPk(chatId);
+    if (!chat) {
+      return res
+        .status(404)
+        .json({ status: false, data: null, message: "Chat not found" });
+    }
     const pageSize = parseInt(req.query.pageSize) || 10;
     const currentPage = parseInt(req.query.page) || 1;
-    const totalMessages = await Message.count();
+    const totalMessages = await Message.count({ where: { chatId: chat.id } });
     const totalPages = Math.ceil(totalMessages / pageSize);
     let limit = pageSize;
     let offset = totalMessages - currentPage * pageSize;
-
     if (offset < 0) {
       limit += offset;
       offset = 0;
     }
-    const messages = await Message.findAll({
+    const messages = await chat.getMessages({
       limit: limit,
       offset: offset,
       order: [["createdAt", "ASC"]],
@@ -31,7 +43,7 @@ const getAllMessages = async (req, res) => {
         data: messages,
         totalMessages,
       },
-      messages: null,
+      message: null,
     });
   } catch (error) {
     console.log(error);
@@ -43,17 +55,30 @@ const getAllMessages = async (req, res) => {
 
 const sendMessage = async (req, res) => {
   try {
-    const { text } = req.body;
-    if (!text) {
+    const { chatId } = req.params;
+    if (!chatId) {
+      return res
+        .status(400)
+        .json({ status: false, data: null, message: "Missing chat id" });
+    }
+    const chat = await Chat.findByPk(chatId);
+    if (!chat) {
+      req
+        .status(400)
+        .json({ status: false, data: null, message: "Not chat found" });
+    }
+    const { content } = req.body;
+    if (!content) {
       return res.status(400).json({
         status: false,
         data: null,
         message: "Can't send empty message",
       });
     }
-    const message = await req.user.createMessage({
-      text,
-      senderName: req.user.fullName,
+    const message = await chat.createMessage({
+      content,
+      senderName: req.user?.fullName,
+      senderId: req.user.id,
     });
     if (!message) {
       throw new Error(
@@ -71,4 +96,4 @@ const sendMessage = async (req, res) => {
   }
 };
 
-module.exports = { getAllMessages, sendMessage };
+module.exports = { getChatMessages, sendMessage };

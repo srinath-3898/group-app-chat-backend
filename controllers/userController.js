@@ -45,7 +45,13 @@ const editProfile = async (req, res) => {
 
 const getUsers = async (req, res) => {
   try {
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const currentPage = parseInt(req.query.page) || 1;
+    const totalRecords = (await User.count()) - 1;
+    const totalPages = Math.ceil(totalRecords / pageSize);
     const users = await User.findAll({
+      offset: (currentPage - 1) * pageSize,
+      limit: pageSize,
       attributes: ["id", "fullName", "email", "mobile", "loginStatus"],
       where: { id: { [Sequelize.Op.not]: req.user.id } },
     });
@@ -54,9 +60,16 @@ const getUsers = async (req, res) => {
         "Something went wrong while fetching users, please try again"
       );
     }
-    return res
-      .status(200)
-      .json({ status: true, data: { users }, message: null });
+    return res.status(200).json({
+      status: true,
+      data: {
+        currentPage,
+        lastPage: totalPages,
+        users: users,
+        totalRecords,
+      },
+      message: null,
+    });
   } catch (error) {
     console.log(error);
     return res
