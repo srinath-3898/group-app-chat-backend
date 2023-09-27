@@ -12,7 +12,6 @@ Chat.init(
       allowNull: false,
       defaultValue: false,
     },
-    adminId: { type: Sequelize.DataTypes.STRING },
   },
   { sequelize, modelName: "chat" }
 );
