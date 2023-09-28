@@ -7,8 +7,20 @@ const Chat = require("./models/chatModel");
 const GroupInvitation = require("./models/groupInvitationModel");
 const UserChat = require("./models/userChatMode");
 require("dotenv").config();
+const { createServer } = require("http");
+const { Server } = require("socket.io");
+const { initializeSocketIO } = require("./socket");
 
 const app = express();
+
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  pingTimeout: 60000,
+  cors: { origin: "*", credentials: true },
+});
+
+app.set("io", io);
 
 app.use(cors());
 app.use(express.json());
@@ -35,13 +47,15 @@ GroupInvitation.belongsTo(Chat);
 User.hasMany(GroupInvitation);
 GroupInvitation.belongsTo(User);
 
+initializeSocketIO(io);
+
 const port = process.env.PORT;
 
 sequelize
   .sync()
   .then(() => {
     console.log("Database connected");
-    return app.listen(port);
+    return httpServer.listen(8080);
   })
   .then(() => console.log(`Server running on port ${port}`))
   .catch((error) => console.log(error));

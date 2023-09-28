@@ -6,9 +6,9 @@ const sequelize = new Sequelize(
   process.env.RDS_USERNAME,
   process.env.RDS_PASSWORD,
   {
-    dialect: "postgres",
+    dialect: "mysql",
     host: process.env.RDS_HOSTNAME,
-    port: 5432,
+    port: 3306,
     logging: false,
   }
 );

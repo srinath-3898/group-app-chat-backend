@@ -1,5 +1,7 @@
+const { ChatEventEnum } = require("../constants");
 const Chat = require("../models/chatModel");
 const Message = require("../models/messageModel");
+const { emitSocketEvent } = require("../socket");
 
 const getChatMessages = async (req, res) => {
   try {
@@ -35,6 +37,7 @@ const getChatMessages = async (req, res) => {
         "Something went wrong while fetching messages, please try again"
       );
     }
+
     return res.status(200).json({
       status: true,
       data: {
@@ -85,6 +88,16 @@ const sendMessage = async (req, res) => {
         "Something went wrong while sending message, please try again"
       );
     }
+    const participants = await chat.getUsers();
+    participants.forEach((participantObjectId) => {
+      if (participantObjectId.id.toString() === req.user.id.toString()) return;
+      emitSocketEvent(
+        req,
+        participantObjectId.id.toString(),
+        ChatEventEnum.MESSAGE_RECEIVED_EVENT,
+        message
+      );
+    });
     return res
       .status(201)
       .json({ status: true, data: null, message: "Message sent successfully" });
