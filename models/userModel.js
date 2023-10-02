@@ -10,6 +10,7 @@ User.init(
     mobile: { type: Sequelize.DataTypes.STRING(255), allowNull: false },
     password: { type: Sequelize.DataTypes.STRING(255), allowNull: false },
     loginStatus: { type: Sequelize.DataTypes.BOOLEAN, allowNull: false },
+    profilePic: { type: Sequelize.DataTypes.STRING(100), allowNull: true },
   },
   { sequelize, modelName: "user" }
 );

@@ -1,6 +1,3 @@
-const Sequelize = require("sequelize");
-const User = require("../models/userModel");
-
 const profile = async (req, res) => {
   try {
     return res.status(200).json({

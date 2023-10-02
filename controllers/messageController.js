@@ -2,6 +2,8 @@ const { ChatEventEnum } = require("../constants");
 const Chat = require("../models/chatModel");
 const Message = require("../models/messageModel");
 const { emitSocketEvent } = require("../socket");
+const { uploadToS3 } = require("../services/s3Services");
+const sequelize = require("../configs/dbConfig");
 
 const getChatMessages = async (req, res) => {
   try {
@@ -57,51 +59,87 @@ const getChatMessages = async (req, res) => {
 };
 
 const sendMessage = async (req, res) => {
+  const transaction = await sequelize.transaction();
   try {
     const { chatId } = req.params;
     if (!chatId) {
+      await transaction.rollback();
       return res
         .status(400)
         .json({ status: false, data: null, message: "Missing chat id" });
     }
-    const chat = await Chat.findByPk(chatId);
+    const chat = await Chat.findByPk(chatId, { transaction: transaction });
     if (!chat) {
-      req
+      await transaction.rollback();
+      return res
         .status(400)
         .json({ status: false, data: null, message: "Not chat found" });
     }
-    const { content } = req.body;
-    if (!content) {
+    let message;
+    const { content, type } = req.body;
+    if (type === "text" && !content) {
+      await transaction.rollback();
       return res.status(400).json({
         status: false,
         data: null,
         message: "Can't send empty message",
       });
     }
-    const message = await chat.createMessage({
-      content,
-      senderName: req.user?.fullName,
-      senderId: req.user.id,
-    });
+    if (type !== "text") {
+      if (!req.file) {
+        return res.status(400).json({
+          status: false,
+          data: null,
+          message: "File not provided",
+        });
+      }
+      const file = req.file;
+      const fileName = Date.now() + "-" + file.originalname;
+      const s3Response = await uploadToS3({ file, fileName });
+      const fileURL = s3Response.Location;
+      message = await chat.createMessage(
+        {
+          type,
+          content: file.originalname, // or you can set this to null
+          senderName: req.user?.fullName,
+          senderId: req.user.id,
+          s3Key: fileName,
+          url: fileURL,
+        },
+        { transaction: transaction }
+      );
+    } else {
+      message = await chat.createMessage(
+        {
+          content,
+          senderName: req.user?.fullName,
+          senderId: req.user.id,
+          type,
+        },
+        { transaction: transaction }
+      );
+    }
     if (!message) {
       throw new Error(
         "Something went wrong while sending message, please try again"
       );
     }
-    const participants = await chat.getUsers();
-    participants.forEach((participantObjectId) => {
-      if (participantObjectId.id.toString() === req.user.id.toString()) return;
+    const users = await chat.getUsers({ transaction: transaction });
+    users.forEach((user) => {
+      if (user.id.toString() === req.user.id.toString()) return;
       emitSocketEvent(
         req,
-        participantObjectId.id.toString(),
+        user.id.toString(),
         ChatEventEnum.MESSAGE_RECEIVED_EVENT,
         message
       );
     });
+    await transaction.commit();
     return res
       .status(201)
       .json({ status: true, data: null, message: "Message sent successfully" });
   } catch (error) {
+    await transaction.rollback();
     console.log(error);
     return res
       .status(500)

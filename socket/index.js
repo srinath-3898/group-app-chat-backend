@@ -4,6 +4,7 @@ const User = require("../models/userModel");
 
 const mountJoinChatEvent = (socket) => {
   socket.on(ChatEventEnum.JOIN_CHAT_EVENT, (chatId) => {
+    console.log(`User joined the chat. chatId: `, chatId);
     socket.join(chatId);
   });
 };
@@ -11,7 +12,7 @@ const mountJoinChatEvent = (socket) => {
 const initializeSocketIO = (io) => {
   return io.on("connection", async (socket) => {
     try {
-      const token = socket.handshake.query.token;
+      const token = socket.handshake.auth.token;
       if (!token) {
         throw new Error("Token is missing");
       }
@@ -26,8 +27,10 @@ const initializeSocketIO = (io) => {
       socket.user = user;
       socket.join(user.id.toString());
       socket.emit(ChatEventEnum.CONNECTED_EVENT);
+      console.log("User connected. userId: ", user.id.toString());
       mountJoinChatEvent(socket);
       socket.on(ChatEventEnum.DISCONNECT_EVENT, () => {
+        console.log("user has disconnected. userId: " + socket.user?._id);
         if (socket.user?._id) {
           socket.leave(socket.user._id);
         }
@@ -42,7 +45,7 @@ const initializeSocketIO = (io) => {
 };
 
 const emitSocketEvent = (req, roomId, event, payload) => {
-  console.log(roomId);
+  console.log(req.app.get("io"));
   req.app.get("io").in(roomId).emit(event, payload);
 };
 
