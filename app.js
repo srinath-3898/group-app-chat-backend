@@ -10,6 +10,7 @@ require("dotenv").config();
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 const { initializeSocketIO } = require("./socket");
+const Contact = require("./models/contactModel");
 
 const app = express();
 
@@ -34,6 +35,9 @@ app.use("/group-invitation", require("./routes/groupInvitationRoutes"));
 
 User.belongsToMany(Chat, { through: "userChat" });
 Chat.belongsToMany(User, { through: "userChat" });
+
+User.belongsToMany(Contact, { through: "userContact" });
+Contact.belongsToMany(User, { through: "userContact" });
 
 Message.belongsTo(Chat);
 Chat.hasMany(Message);

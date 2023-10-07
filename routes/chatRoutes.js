@@ -9,7 +9,10 @@ const {
   getChatUsers,
   removeAdminAccess,
   removeUser,
+  uploadChatIcon,
 } = require("../controllers/chatController");
+const multer = require("multer");
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
@@ -21,5 +24,11 @@ router.post("/add-users", protect, addUsersToChat);
 router.post("/remove-user", protect, removeUser);
 router.post("/user-admin", protect, makeUserAdmin);
 router.post("/user-remove-admin", protect, removeAdminAccess);
+router.post(
+  "/upload-chat-icon",
+  protect,
+  upload.single("file"),
+  uploadChatIcon
+);
 
 module.exports = router;

@@ -253,13 +253,11 @@ const removeUser = async (req, res) => {
       );
     }
     await transaction.commit();
-    return res
-      .status(201)
-      .json({
-        status: false,
-        data: null,
-        message: "Successfully removed user",
-      });
+    return res.status(201).json({
+      status: false,
+      data: null,
+      message: "Successfully removed user",
+    });
   } catch (error) {
     await transaction.rollback();
     console.log(error);
@@ -500,6 +498,59 @@ const createGroupChat = async (req, res) => {
   }
 };
 
+const uploadChatIcon = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { chatId } = req.params;
+    if (!chatId) {
+      await transaction.rollback();
+      return res
+        .status(400)
+        .json({ status: false, data: null, message: "Missing chat id" });
+    }
+    const chat = await Chat.findByPk(chatId, { transaction: transaction });
+    if (!chat) {
+      await transaction.rollback();
+      return res
+        .status(404)
+        .json({ status: false, data: null, message: "Chat not found" });
+    }
+    if (!req.file) {
+      await transaction.rollback();
+      return res.status(400).json({
+        status: false,
+        data: null,
+        message: "File not provided",
+      });
+    }
+    const icon = req.file;
+    const fileName = Date.now() + "-" + icon.originalname + chat?.name;
+    const s3Response = await uploadToS3({ file: icon, fileName });
+    const fileURL = s3Response.Location;
+    const updatedChat = await Chat.update(
+      { icon: fileURL },
+      { transaction: transaction }
+    );
+    if (!updatedChat) {
+      throw new Error(
+        "Something went wrong while uploading profile pic, please try again"
+      );
+    }
+    await transaction.commit();
+    return res.status(201).json({
+      status: true,
+      data: { userDetails: updatedUser },
+      message: "Profile picture uploaded successfully",
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.log(error);
+    return res
+      .status(500)
+      .json({ status: false, data: null, message: error.message });
+  }
+};
+
 module.exports = {
   getChats,
   createGroupChat,
@@ -509,4 +560,5 @@ module.exports = {
   removeUser,
   makeUserAdmin,
   removeAdminAccess,
+  uploadChatIcon,
 };
